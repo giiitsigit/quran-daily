@@ -108,23 +108,44 @@ function buildWallpaper({ W, H, verse, dayOfYear, daysInYear, pct, hijri, C }) {
   const chipH2     = s(40);
   const chipW2     = s(310);
 
-  const surahTagY  = H * 0.22;    // "QS. SURAH : ayah"
-
-  // Arabic block starts here
-  const arabicStartY = H * 0.255;
-  const arabicFsz    = s(50);
-  const arabicLh     = arabicFsz * 1.75;
-
+  const arabicFsz  = s(50);
+  const arabicLh   = arabicFsz * 1.75;
   const latinFsz   = s(20);
   const latinLh    = latinFsz * 1.6;
   const transFsz   = s(23);
   const transLh    = transFsz * 1.65;
 
-  // Wrap text
+  // Wrap text first so we know line counts
   const arabicWords = verse.arabic.split(' ');
   const arabicLines = chunkWords(arabicWords, 5);
   const latinLines  = wrap(verse.latin, Math.floor(44 * W / 1179));
   const transLines  = wrap(verse.translation, Math.floor(40 * W / 1179));
+
+  // ── Calculate total content block height ──
+  const surahTagH  = s(13) * 1.4;
+  const arabicH    = arabicLines.length * arabicLh;
+  const sep1H      = s(20) + s(22);
+  const latinH     = latinLines.length * latinLh;
+  const sep2H      = s(16) + s(20);
+  const transH     = transLines.length * transLh;
+  const surahArH   = s(24) * 1.4;
+  const gapAbove   = s(28); // gap between surah tag and arabic
+
+  const totalBlockH = surahTagH + gapAbove + arabicH + sep1H + latinH + sep2H + transH + s(32) + surahArH;
+
+  // ── Vertical zones ──
+  const headerZoneH = H * 0.20;   // top 20%: day label + chip
+  const footerZoneH = H * 0.10;   // bottom 10%: progress + footer
+  const contentZoneTop = headerZoneH;
+  const contentZoneH   = H - headerZoneH - footerZoneH;
+
+  // Center content block in content zone
+  const contentStartY = contentZoneTop + (contentZoneH - totalBlockH) / 2;
+
+  const surahTagY  = contentStartY + surahTagH;
+
+  // Arabic block starts here
+  const arabicStartY = surahTagY + gapAbove;
 
   // Build arabic SVG, tracking Y
   let y = arabicStartY;
