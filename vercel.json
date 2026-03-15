@@ -1,7 +1,7 @@
 {
-  "outputDirectory": "public",
   "rewrites": [
-    { "source": "/api/wallpaper", "destination": "/api/wallpaper.js" }
+    { "source": "/api/wallpaper", "destination": "/api/wallpaper.js" },
+    { "source": "/", "destination": "/public/index.html" }
   ],
   "headers": [
     {
