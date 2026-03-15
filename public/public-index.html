@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Quran Daily</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ── DESIGN TOKENS ─────────────────────────────────────── */
+:root {
+  --bg:       #0b1814;
+  --bg2:      #0f1f1a;
+  --bg3:      #142820;
+  --teal:     #6bc49e;
+  --teal-dim: rgba(107,196,158,0.22);
+  --teal-sub: rgba(107,196,158,0.10);
+  --teal-brd: rgba(107,196,158,0.20);
+  --text:     #edf5f1;
+  --dim:      rgba(237,245,241,0.40);
+  --sub:      rgba(237,245,241,0.18);
+  --line:     rgba(107,196,158,0.10);
+  --r:        14px;
+  --r-sm:     8px;
+}
+
+/* ── RESET ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── BACKGROUND ─────────────────────────────────────────── */
+.bg-noise {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  opacity: .18;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px;
+}
+.bg-glow {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(107,196,158,0.07) 0%, transparent 70%);
+}
+
+/* ── LAYOUT ─────────────────────────────────────────────── */
+.page { position: relative; z-index: 1; max-width: 440px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* ── NAV ────────────────────────────────────────────────── */
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 0 0;
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.nav-logo-mark {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--teal-dim); border: 1px solid var(--teal-brd);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Scheherazade New', serif; font-size: 1rem; color: var(--teal);
+}
+.nav-title { font-size: .875rem; font-weight: 500; color: var(--text); letter-spacing: .02em; }
+.nav-badge {
+  font-size: .65rem; font-weight: 500; letter-spacing: .08em;
+  color: var(--teal); background: var(--teal-sub);
+  border: 1px solid var(--teal-brd); border-radius: 20px;
+  padding: 3px 10px;
+}
+
+/* ── HERO ───────────────────────────────────────────────── */
+.hero {
+  padding: 44px 0 36px;
+  text-align: center;
+}
+.hero-eyebrow {
+  font-size: .72rem; font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 14px;
+}
+.hero-title {
+  font-size: 2.25rem; font-weight: 300; line-height: 1.15;
+  color: var(--text); letter-spacing: -.02em;
+}
+.hero-title strong { font-weight: 600; }
+.hero-sub {
+  margin-top: 10px; font-size: .95rem; color: var(--dim); line-height: 1.6;
+}
+
+/* ── PHONE PREVIEW ──────────────────────────────────────── */
+.phone-wrap {
+  position: relative; margin: 0 auto 40px;
+  width: 160px;
+}
+.phone-frame {
+  width: 160px; height: 325px;
+  border-radius: 26px; overflow: hidden;
+  border: 1.5px solid rgba(107,196,158,0.15);
+  background: #050d0a;
+  box-shadow:
+    0 0 0 .5px rgba(255,255,255,.04),
+    0 32px 64px rgba(0,0,0,.6),
+    0 0 40px rgba(107,196,158,0.06);
+  position: relative;
+}
+.phone-notch {
+  position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  width: 60px; height: 6px; background: #000; border-radius: 3px; z-index: 4;
+}
+.phone-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  opacity: 0; transition: opacity .4s ease;
+}
+.phone-img.loaded { opacity: 1; }
+.phone-loading {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--sub); font-size: .75rem; letter-spacing: .08em;
+  transition: opacity .3s;
+}
+.phone-loading.hidden { opacity: 0; pointer-events: none; }
+
+/* ── SECTION ────────────────────────────────────────────── */
+.section { margin-bottom: 28px; }
+.section-label {
+  font-size: .68rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+/* ── CHOICE GRID ────────────────────────────────────────── */
+.choice-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+.choice-grid-2 { grid-template-columns: repeat(2,1fr); }
+.choice {
+  padding: 11px 8px 10px; border-radius: var(--r-sm); cursor: pointer; text-align: center;
+  border: 1px solid var(--line); background: transparent;
+  color: var(--dim); font-family: 'DM Sans', sans-serif;
+  font-size: .72rem; font-weight: 400; letter-spacing: .04em;
+  transition: all .18s ease; line-height: 1.4;
+}
+.choice-icon { display: block; font-size: 1rem; margin-bottom: 4px; }
+.choice:hover { border-color: var(--teal-brd); color: var(--text); background: var(--teal-sub); }
+.choice.sel {
+  border-color: var(--teal); color: var(--teal);
+  background: var(--teal-dim);
+}
+.choice-sub { display: block; font-size: .58rem; color: var(--sub); margin-top: 1px; }
+.choice.sel .choice-sub { color: rgba(107,196,158,0.55); }
+
+/* ── PALETTE CHOICES ──────────────────────────────────────*/
+.palette-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+.pal-btn {
+  padding: 12px 8px; border-radius: var(--r-sm); cursor: pointer;
+  border: 1px solid var(--line); background: transparent;
+  font-family: 'DM Sans', sans-serif; text-align: center; transition: all .18s;
+}
+.pal-btn:hover { border-color: var(--teal-brd); }
+.pal-btn.sel { border-color: var(--teal); }
+.pal-swatch {
+  width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 6px;
+  border: 1.5px solid rgba(255,255,255,0.08);
+}
+.pal-label { font-size: .68rem; color: var(--dim); letter-spacing: .04em; }
+.pal-btn.sel .pal-label { color: var(--teal); }
+
+/* ── SURAH PICKER ─────────────────────────────────────────*/
+.surah-box { display: none; margin-top: 10px; }
+.surah-box.show { display: block; }
+.search-row {
+  display: flex; align-items: center; gap: 0;
+  background: var(--bg2); border: 1px solid var(--line); border-radius: var(--r-sm);
+  margin-bottom: 8px; overflow: hidden;
+}
+.search-icon { padding: 0 10px; color: var(--sub); font-size: .9rem; flex-shrink: 0; }
+.search-in {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: 'DM Sans', sans-serif; font-size: .88rem;
+  padding: 10px 12px 10px 0;
+}
+.search-in::placeholder { color: var(--sub); }
+.surah-scroll {
+  max-height: 200px; overflow-y: auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+}
+.s-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: 7px; cursor: pointer; border: 1px solid var(--line);
+  transition: all .15s;
+}
+.s-item:hover { border-color: var(--teal-brd); background: var(--teal-sub); }
+.s-item.sel { border-color: var(--teal); background: var(--teal-dim); }
+.s-num { font-size: .58rem; color: var(--sub); min-width: 16px; }
+.s-name { font-size: .73rem; color: var(--text); flex: 1; line-height: 1.3; }
+.s-ar { font-family: 'Scheherazade New', serif; font-size: .8rem; color: var(--teal); direction: rtl; }
+
+/* ── TEMA GRID ────────────────────────────────────────────*/
+.tema-box { display: none; margin-top: 10px; }
+.tema-box.show { display: block; }
+.tema-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+.t-btn {
+  padding: 12px 8px 10px; border-radius: var(--r-sm); cursor: pointer; text-align: center;
+  border: 1px solid var(--line); background: transparent; transition: all .18s;
+}
+.t-btn:hover { border-color: var(--teal-brd); background: var(--teal-sub); }
+.t-btn.sel { border-color: var(--teal); background: var(--teal-dim); }
+.t-icon { display: block; font-size: 1.2rem; margin-bottom: 4px; }
+.t-label { font-size: .65rem; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.t-btn.sel .t-label { color: var(--teal); }
+
+/* ── URL CARD ─────────────────────────────────────────────*/
+.url-card {
+  border-radius: var(--r); overflow: hidden;
+  border: 1px solid var(--teal-brd);
+  background: var(--bg2);
+  margin-bottom: 28px;
+}
+.url-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.url-card-label { font-size: .68rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--teal); }
+.url-copy-btn {
+  padding: 5px 14px; border-radius: 20px; cursor: pointer;
+  border: 1px solid var(--teal-brd); background: transparent;
+  color: var(--teal); font-family: 'DM Sans', sans-serif;
+  font-size: .68rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+  transition: all .18s;
+}
+.url-copy-btn:hover { background: var(--teal); color: var(--bg); }
+.url-val {
+  padding: 14px 16px;
+  font-family: 'SF Mono','Fira Mono','Consolas',monospace;
+  font-size: .72rem; color: var(--dim); word-break: break-all; line-height: 1.65;
+}
+.url-hint { padding: 0 16px 12px; font-size: .72rem; color: var(--sub); }
+
+/* ── GUIDE TABS ───────────────────────────────────────────*/
+.guide-tabs { display: flex; gap: 5px; margin-bottom: 14px; }
+.g-tab {
+  flex: 1; padding: 8px; border-radius: var(--r-sm); cursor: pointer; text-align: center;
+  border: 1px solid var(--line); background: transparent;
+  color: var(--dim); font-family: 'DM Sans', sans-serif;
+  font-size: .68rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+  transition: all .18s;
+}
+.g-tab:hover { border-color: var(--teal-brd); color: var(--text); }
+.g-tab.sel { border-color: var(--teal); color: var(--teal); background: var(--teal-sub); }
+
+.guide-panel { display: none; flex-direction: column; gap: 8px; }
+.guide-panel.show { display: flex; }
+.step {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px; border-radius: var(--r-sm);
+  border: 1px solid var(--line); background: var(--bg2);
+}
+.step-n {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--teal);
+  color: var(--bg); font-size: .68rem; font-weight: 700; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; margin-top: 1px;
+}
+.step-t { font-size: .82rem; line-height: 1.6; color: var(--dim); }
+.step-t strong { color: var(--text); font-weight: 500; }
+.step-code {
+  display: block; margin-top: 6px; padding: 7px 10px; border-radius: 6px;
+  background: rgba(0,0,0,.35); border: 1px solid var(--line);
+  font-family: 'SF Mono','Fira Mono','Consolas',monospace;
+  font-size: .68rem; color: var(--teal); word-break: break-all; line-height: 1.6;
+}
+
+/* ── DIVIDER LINE ─────────────────────────────────────────*/
+.div-line { height: 1px; background: var(--line); margin: 32px 0; }
+
+/* ── ANIMATIONS ───────────────────────────────────────────*/
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page > * { animation: fadeUp .45s ease both; }
+.page > *:nth-child(2) { animation-delay: .04s; }
+.page > *:nth-child(3) { animation-delay: .08s; }
+.page > *:nth-child(4) { animation-delay: .12s; }
+.page > *:nth-child(5) { animation-delay: .16s; }
+
+/* ── SCROLLBAR ────────────────────────────────────────────*/
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: var(--teal-brd); border-radius: 2px; }
+::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<div class="bg-noise"></div>
+<div class="bg-glow"></div>
+
+<div class="page">
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">
+      <div class="nav-logo-mark">ق</div>
+      <span class="nav-title">Quran Daily</span>
+    </div>
+    <span class="nav-badge">BETA</span>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Wallpaper Harian</div>
+    <h1 class="hero-title">Satu ayat.<br><strong>Setiap hari.</strong></h1>
+    <p class="hero-sub">Otomatis berganti tiap pagi — iPhone & Android.</p>
+  </div>
+
+  <!-- PHONE PREVIEW -->
+  <div class="phone-wrap">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-loading" id="loader">Memuat...</div>
+      <img class="phone-img" id="previewImg" src="" alt="preview"
+        onload="this.classList.add('loaded'); document.getElementById('loader').classList.add('hidden')"
+        onerror="document.getElementById('loader').textContent='Belum ter-deploy'">
+    </div>
+  </div>
+
+  <!-- ① DEVICE -->
+  <div class="section">
+    <div class="section-label">① Perangkat</div>
+    <div class="choice-grid">
+      <button class="choice sel" data-device="iphone-pro" onclick="pick(this,'device')">
+        <span class="choice-icon">📱</span>iPhone Pro
+        <span class="choice-sub">1179×2556</span>
+      </button>
+      <button class="choice" data-device="iphone" onclick="pick(this,'device')">
+        <span class="choice-icon">📱</span>iPhone
+        <span class="choice-sub">1170×2532</span>
+      </button>
+      <button class="choice" data-device="iphone-se" onclick="pick(this,'device')">
+        <span class="choice-icon">📱</span>iPhone SE
+        <span class="choice-sub">750×1334</span>
+      </button>
+      <button class="choice" data-device="android-fhd" onclick="pick(this,'device')">
+        <span class="choice-icon">🤖</span>Android FHD
+        <span class="choice-sub">1080×2400</span>
+      </button>
+      <button class="choice" data-device="pixel" onclick="pick(this,'device')">
+        <span class="choice-icon">🤖</span>Pixel/Samsung
+        <span class="choice-sub">1080×2340</span>
+      </button>
+      <button class="choice" data-device="universal" onclick="pick(this,'device')">
+        <span class="choice-icon">🖥️</span>Universal
+        <span class="choice-sub">1080×1920</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ② MODE -->
+  <div class="section">
+    <div class="section-label">② Mode Ayat</div>
+    <div class="choice-grid choice-grid-2" style="margin-bottom:0">
+      <button class="choice sel" data-mode="random" onclick="pick(this,'mode')">
+        <span class="choice-icon">✦</span>Random Harian
+        <span class="choice-sub">Seed by date</span>
+      </button>
+      <button class="choice" data-mode="surah" onclick="pick(this,'mode')">
+        <span class="choice-icon">📖</span>Pilih Surah
+        <span class="choice-sub">1 surah spesifik</span>
+      </button>
+      <button class="choice" data-mode="tema" onclick="pick(this,'mode')">
+        <span class="choice-icon">🌙</span>Pilih Tema
+        <span class="choice-sub">Berdasarkan topik</span>
+      </button>
+      <button class="choice" data-mode="sequential" onclick="pick(this,'mode')">
+        <span class="choice-icon">↓</span>Urut
+        <span class="choice-sub">Al-Fatihah → An-Nas</span>
+      </button>
+    </div>
+
+    <!-- Surah picker -->
+    <div class="surah-box" id="surahBox">
+      <div class="search-row">
+        <span class="search-icon">⌕</span>
+        <input class="search-in" id="surahSearch" type="text"
+          placeholder="Cari nama surah..." oninput="filterSurah(this.value)">
+      </div>
+      <div class="surah-scroll" id="surahScroll"></div>
+    </div>
+
+    <!-- Tema picker -->
+    <div class="tema-box" id="temaBox">
+      <div class="tema-grid" id="temaGrid"></div>
+    </div>
+  </div>
+
+  <!-- ③ PALETTE -->
+  <div class="section">
+    <div class="section-label">③ Warna</div>
+    <div class="palette-grid">
+      <button class="pal-btn sel" data-pal="dark" onclick="pick(this,'palette')">
+        <div class="pal-swatch" style="background:linear-gradient(135deg,#0b1814,#142820)"></div>
+        <div class="pal-label">Dark Teal</div>
+      </button>
+      <button class="pal-btn" data-pal="warm" onclick="pick(this,'palette')">
+        <div class="pal-swatch" style="background:linear-gradient(135deg,#f6f1e9,#e8e0d2)"></div>
+        <div class="pal-label">Warm Light</div>
+      </button>
+      <button class="pal-btn" data-pal="black" onclick="pick(this,'palette')">
+        <div class="pal-swatch" style="background:#000"></div>
+        <div class="pal-label">Pure Black</div>
+      </button>
+    </div>
+  </div>
+
+  <div class="div-line"></div>
+
+  <!-- URL OUTPUT -->
+  <div class="url-card">
+    <div class="url-card-head">
+      <span class="url-card-label">URL Wallpaper</span>
+      <button class="url-copy-btn" id="copyBtn" onclick="copyURL()">Salin</button>
+    </div>
+    <div class="url-val" id="urlVal"></div>
+    <div class="url-hint">↳ Return gambar langsung · berubah tiap hari · no screenshot needed</div>
+  </div>
+
+  <!-- ④ PANDUAN -->
+  <div class="section">
+    <div class="section-label">④ Setup Otomatis</div>
+    <div class="guide-tabs">
+      <button class="g-tab sel" onclick="showGuide('ios',this)">iPhone</button>
+      <button class="g-tab" onclick="showGuide('android',this)">Android</button>
+      <button class="g-tab" onclick="showGuide('manual',this)">Manual</button>
+    </div>
+
+    <div class="guide-panel show" id="guide-ios">
+      <div class="step"><div class="step-n">1</div><div class="step-t">Buka <strong>Shortcuts</strong> → tab <strong>Automation</strong> → tap <strong>+</strong> → <strong>New Automation</strong></div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-t">Trigger: <strong>Time of Day</strong> → <strong>06:00</strong> → <strong>Daily</strong><br>Aktifkan <strong>"Run Immediately"</strong> (penting!)</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-t">Add action: <strong>Get Contents of URL</strong><span class="step-code" id="ios-url"></span></div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-t">Add action: <strong>Set Wallpaper Photo</strong> → input: <em>Contents of URL</em><br>Location: <strong>Lock Screen</strong> · matikan "Show Preview"</div></div>
+      <div class="step"><div class="step-n">5</div><div class="step-t">Tap <strong>Done</strong> → test ▶️ → wallpaper ganti tiap pagi 🎉</div></div>
+    </div>
+
+    <div class="guide-panel" id="guide-android">
+      <div class="step"><div class="step-n">1</div><div class="step-t">Install <strong>MacroDroid</strong> di Play Store (gratis)</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-t">New Macro → Trigger: <strong>Day/Time: 06:00</strong> setiap hari</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-t">Action: <strong>Web Interactions → HTTP Request GET</strong><span class="step-code" id="android-url"></span>Save response → <code>/Download/quran-daily.png</code></div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-t">Action: <strong>Device → Set Wallpaper</strong> → pilih file di atas → Lock Screen</div></div>
+      <div class="step"><div class="step-n">5</div><div class="step-t">Save → Test macro ✓</div></div>
+    </div>
+
+    <div class="guide-panel" id="guide-manual">
+      <div class="step"><div class="step-n">1</div><div class="step-t">Buka URL di browser (Chrome/Safari):<span class="step-code" id="manual-url"></span></div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-t">Gambar tampil langsung → <strong>tekan & tahan</strong> → <strong>Simpan Gambar</strong></div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-t">Set sebagai wallpaper dari Galeri / Photos ✓<br><em style="font-size:.78rem;color:var(--sub)">Tip: Bookmark URL ini, tiap pagi cukup 3 langkah.</em></div></div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ── DATA ──────────────────────────────────────────────────
+const FULL_SURAHS = [{n:1,ar:"الفاتحة",id:"Al-Fatihah"},{n:2,ar:"البقرة",id:"Al-Baqarah"},{n:3,ar:"آل عمران",id:"Ali Imran"},{n:4,ar:"النساء",id:"An-Nisa"},{n:5,ar:"المائدة",id:"Al-Maidah"},{n:6,ar:"الأنعام",id:"Al-An'am"},{n:7,ar:"الأعراف",id:"Al-A'raf"},{n:8,ar:"الأنفال",id:"Al-Anfal"},{n:9,ar:"التوبة",id:"At-Tawbah"},{n:10,ar:"يونس",id:"Yunus"},{n:11,ar:"هود",id:"Hud"},{n:12,ar:"يوسف",id:"Yusuf"},{n:13,ar:"الرعد",id:"Ar-Ra'd"},{n:14,ar:"إبراهيم",id:"Ibrahim"},{n:15,ar:"الحجر",id:"Al-Hijr"},{n:16,ar:"النحل",id:"An-Nahl"},{n:17,ar:"الإسراء",id:"Al-Isra"},{n:18,ar:"الكهف",id:"Al-Kahf"},{n:19,ar:"مريم",id:"Maryam"},{n:20,ar:"طه",id:"Ta-Ha"},{n:21,ar:"الأنبياء",id:"Al-Anbiya"},{n:22,ar:"الحج",id:"Al-Hajj"},{n:23,ar:"المؤمنون",id:"Al-Mu'minun"},{n:24,ar:"النور",id:"An-Nur"},{n:25,ar:"الفرقان",id:"Al-Furqan"},{n:26,ar:"الشعراء",id:"Ash-Shu'ara"},{n:27,ar:"النمل",id:"An-Naml"},{n:28,ar:"القصص",id:"Al-Qasas"},{n:29,ar:"العنكبوت",id:"Al-Ankabut"},{n:30,ar:"الروم",id:"Ar-Rum"},{n:31,ar:"لقمان",id:"Luqman"},{n:32,ar:"السجدة",id:"As-Sajdah"},{n:33,ar:"الأحزاب",id:"Al-Ahzab"},{n:34,ar:"سبأ",id:"Saba"},{n:35,ar:"فاطر",id:"Fatir"},{n:36,ar:"يس",id:"Ya-Sin"},{n:37,ar:"الصافات",id:"As-Saffat"},{n:38,ar:"ص",id:"Sad"},{n:39,ar:"الزمر",id:"Az-Zumar"},{n:40,ar:"غافر",id:"Ghafir"},{n:41,ar:"فصلت",id:"Fussilat"},{n:42,ar:"الشورى",id:"Ash-Shura"},{n:43,ar:"الزخرف",id:"Az-Zukhruf"},{n:44,ar:"الدخان",id:"Ad-Dukhan"},{n:45,ar:"الجاثية",id:"Al-Jathiyah"},{n:46,ar:"الأحقاف",id:"Al-Ahqaf"},{n:47,ar:"محمد",id:"Muhammad"},{n:48,ar:"الفتح",id:"Al-Fath"},{n:49,ar:"الحجرات",id:"Al-Hujurat"},{n:50,ar:"ق",id:"Qaf"},{n:51,ar:"الذاريات",id:"Adh-Dhariyat"},{n:52,ar:"الطور",id:"At-Tur"},{n:53,ar:"النجم",id:"An-Najm"},{n:54,ar:"القمر",id:"Al-Qamar"},{n:55,ar:"الرحمن",id:"Ar-Rahman"},{n:56,ar:"الواقعة",id:"Al-Waqi'ah"},{n:57,ar:"الحديد",id:"Al-Hadid"},{n:58,ar:"المجادلة",id:"Al-Mujadila"},{n:59,ar:"الحشر",id:"Al-Hashr"},{n:60,ar:"الممتحنة",id:"Al-Mumtahanah"},{n:61,ar:"الصف",id:"As-Saf"},{n:62,ar:"الجمعة",id:"Al-Jumu'ah"},{n:63,ar:"المنافقون",id:"Al-Munafiqun"},{n:64,ar:"التغابن",id:"At-Taghabun"},{n:65,ar:"الطلاق",id:"At-Talaq"},{n:66,ar:"التحريم",id:"At-Tahrim"},{n:67,ar:"الملك",id:"Al-Mulk"},{n:68,ar:"القلم",id:"Al-Qalam"},{n:69,ar:"الحاقة",id:"Al-Haqqah"},{n:70,ar:"المعارج",id:"Al-Ma'arij"},{n:71,ar:"نوح",id:"Nuh"},{n:72,ar:"الجن",id:"Al-Jinn"},{n:73,ar:"المزمل",id:"Al-Muzzammil"},{n:74,ar:"المدثر",id:"Al-Muddaththir"},{n:75,ar:"القيامة",id:"Al-Qiyamah"},{n:76,ar:"الإنسان",id:"Al-Insan"},{n:77,ar:"المرسلات",id:"Al-Mursalat"},{n:78,ar:"النبأ",id:"An-Naba"},{n:79,ar:"النازعات",id:"An-Nazi'at"},{n:80,ar:"عبس",id:"Abasa"},{n:81,ar:"التكوير",id:"At-Takwir"},{n:82,ar:"الانفطار",id:"Al-Infitar"},{n:83,ar:"المطففين",id:"Al-Mutaffifin"},{n:84,ar:"الانشقاق",id:"Al-Inshiqaq"},{n:85,ar:"البروج",id:"Al-Buruj"},{n:86,ar:"الطارق",id:"At-Tariq"},{n:87,ar:"الأعلى",id:"Al-A'la"},{n:88,ar:"الغاشية",id:"Al-Ghashiyah"},{n:89,ar:"الفجر",id:"Al-Fajr"},{n:90,ar:"البلد",id:"Al-Balad"},{n:91,ar:"الشمس",id:"Ash-Shams"},{n:92,ar:"الليل",id:"Al-Layl"},{n:93,ar:"الضحى",id:"Ad-Duhaa"},{n:94,ar:"الشرح",id:"Ash-Sharh"},{n:95,ar:"التين",id:"At-Tin"},{n:96,ar:"العلق",id:"Al-Alaq"},{n:97,ar:"القدر",id:"Al-Qadr"},{n:98,ar:"البينة",id:"Al-Bayyinah"},{n:99,ar:"الزلزلة",id:"Az-Zalzalah"},{n:100,ar:"العاديات",id:"Al-Adiyat"},{n:101,ar:"القارعة",id:"Al-Qari'ah"},{n:102,ar:"التكاثر",id:"At-Takathur"},{n:103,ar:"العصر",id:"Al-Asr"},{n:104,ar:"الهمزة",id:"Al-Humazah"},{n:105,ar:"الفيل",id:"Al-Fil"},{n:106,ar:"قريش",id:"Quraysh"},{n:107,ar:"الماعون",id:"Al-Ma'un"},{n:108,ar:"الكوثر",id:"Al-Kawthar"},{n:109,ar:"الكافرون",id:"Al-Kafirun"},{n:110,ar:"النصر",id:"An-Nasr"},{n:111,ar:"المسد",id:"Al-Masad"},{n:112,ar:"الإخلاص",id:"Al-Ikhlas"},{n:113,ar:"الفلق",id:"Al-Falaq"},{n:114,ar:"الناس",id:"An-Nas"}];
+const TEMAS = [{id:'sabar',l:'Sabar',i:'🌊'},{id:'rezeki',l:'Rezeki',i:'🌾'},{id:'cinta',l:'Cinta',i:'❤️'},{id:'syukur',l:'Syukur',i:'✨'},{id:'taubat',l:'Taubat',i:'🕊️'},{id:'ilmu',l:'Ilmu',i:'📖'},{id:'taqwa',l:'Taqwa',i:'🌙'},{id:'doa',l:'Doa',i:'🤲'},{id:'akhirat',l:'Akhirat',i:'⭐'}];
+
+// ── STATE ─────────────────────────────────────────────────
+const state = { device:'iphone-pro', mode:'random', surah:null, tema:null, palette:'dark' };
+const BASE  = window.location.origin + '/api/wallpaper';
+
+// ── URL builder ───────────────────────────────────────────
+function buildURL() {
+  const p = new URLSearchParams();
+  p.set('device',  state.device);
+  p.set('mode',    state.mode);
+  p.set('palette', state.palette);
+  if (state.mode === 'surah' && state.surah) p.set('surah', state.surah);
+  if (state.mode === 'tema'  && state.tema)  p.set('tema',  state.tema);
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (tz) p.set('tz', tz);
+  return `${BASE}?${p.toString()}`;
+}
+
+let previewTimer;
+function refreshAll() {
+  const url = buildURL();
+  document.getElementById('urlVal').textContent   = url;
+  document.getElementById('ios-url').textContent  = url;
+  document.getElementById('android-url').textContent = url.replace('iphone-pro','android-fhd');
+  document.getElementById('manual-url').textContent  = url;
+
+  // Debounce preview load
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    const img = document.getElementById('previewImg');
+    const loader = document.getElementById('loader');
+    img.classList.remove('loaded');
+    loader.classList.remove('hidden');
+    loader.textContent = 'Memuat...';
+    img.src = url + '&_t=' + Date.now();
+  }, 500);
+}
+
+// ── Pick handlers ─────────────────────────────────────────
+function pick(btn, key) {
+  const val = btn.dataset[key] || btn.dataset.pal || btn.dataset.device || btn.dataset.mode;
+  state[key] = val || btn.dataset[key];
+  // Fix: get value from correct data attr
+  if (btn.dataset.device) state.device = btn.dataset.device;
+  if (btn.dataset.mode)   state.mode   = btn.dataset.mode;
+  if (btn.dataset.pal)    state.palette = btn.dataset.pal;
+
+  // Deselect siblings in same group
+  const parent = btn.closest('.choice-grid, .palette-grid');
+  if (parent) parent.querySelectorAll('.choice,.pal-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+
+  // Show/hide pickers
+  document.getElementById('surahBox').classList.toggle('show', state.mode === 'surah');
+  document.getElementById('temaBox').classList.toggle('show',  state.mode === 'tema');
+
+  refreshAll();
+}
+
+// ── Surah list ────────────────────────────────────────────
+function renderSurahs(filter = '') {
+  const el = document.getElementById('surahScroll');
+  el.innerHTML = '';
+  FULL_SURAHS
+    .filter(s => s.id.toLowerCase().includes(filter.toLowerCase()) || s.ar.includes(filter) || String(s.n).includes(filter))
+    .forEach(s => {
+      const d = document.createElement('div');
+      d.className = 's-item' + (state.surah == s.n ? ' sel' : '');
+      d.innerHTML = `<span class="s-num">${s.n}</span><span class="s-name">${s.id}</span><span class="s-ar">${s.ar}</span>`;
+      d.onclick = () => {
+        state.surah = s.n;
+        document.querySelectorAll('.s-item').forEach(x => x.classList.remove('sel'));
+        d.classList.add('sel');
+        refreshAll();
+      };
+      el.appendChild(d);
+    });
+}
+function filterSurah(v) { renderSurahs(v); }
+
+// ── Tema list ─────────────────────────────────────────────
+function renderTemas() {
+  const el = document.getElementById('temaGrid');
+  TEMAS.forEach(t => {
+    const d = document.createElement('button');
+    d.className = 't-btn' + (state.tema === t.id ? ' sel' : '');
+    d.innerHTML = `<span class="t-icon">${t.i}</span><span class="t-label">${t.l}</span>`;
+    d.onclick = () => {
+      state.tema = t.id;
+      document.querySelectorAll('.t-btn').forEach(x => x.classList.remove('sel'));
+      d.classList.add('sel');
+      refreshAll();
+    };
+    el.appendChild(d);
+  });
+}
+
+// ── Guide tabs ────────────────────────────────────────────
+function showGuide(id, btn) {
+  document.querySelectorAll('.g-tab').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  document.querySelectorAll('.guide-panel').forEach(p => p.classList.remove('show'));
+  document.getElementById('guide-' + id).classList.add('show');
+}
+
+// ── Copy ──────────────────────────────────────────────────
+function copyURL() {
+  const url = document.getElementById('urlVal').textContent;
+  navigator.clipboard?.writeText(url).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Tersalin';
+    setTimeout(() => btn.textContent = 'Salin', 2000);
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────
+renderSurahs();
+renderTemas();
+refreshAll();
+</script>
+</body>
+</html>
