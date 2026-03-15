@@ -1,8 +1,7 @@
-// api/wallpaper.js — v3 FIXED LAYOUT
+// api/wallpaper.js — v4 CLEAN LAYOUT
 import {
   getDailyVerseSurahAyah, getYearProgress,
-  formatHijri, formatGregorian,
-  fetchVerseData, FALLBACK_VERSES
+  formatHijri, fetchVerseData, FALLBACK_VERSES
 } from '../lib/quran.js';
 
 export const config = { runtime: 'edge' };
@@ -20,29 +19,26 @@ const DEVICES = {
 const PALETTES = {
   dark: {
     bg:'#0b1814', bgGlow:'#142820',
-    dot:'rgba(255,255,255,0.055)', dotFill:'rgba(107,196,158,0.45)', dotHead:'#6bc49e',
-    accent:'#6bc49e', accentSub:'rgba(107,196,158,0.30)',
-    text:'#edf5f1', textDim:'rgba(237,245,241,0.40)', textSub:'rgba(237,245,241,0.18)',
-    arabic:'#edf5f1', line:'rgba(107,196,158,0.14)',
-    chip:'rgba(107,196,158,0.08)', chipBrd:'rgba(107,196,158,0.20)',
+    accent:'#6bc49e', accentSub:'rgba(107,196,158,0.28)',
+    text:'#edf5f1', textDim:'rgba(237,245,241,0.42)', textSub:'rgba(237,245,241,0.20)',
+    arabic:'#edf5f1', line:'rgba(107,196,158,0.15)',
+    chip:'rgba(107,196,158,0.08)', chipBrd:'rgba(107,196,158,0.22)',
     bar:'rgba(107,196,158,0.12)',
   },
   warm: {
     bg:'#f6f1e9', bgGlow:'#e8e0d2',
-    dot:'rgba(20,50,35,0.07)', dotFill:'rgba(25,95,65,0.42)', dotHead:'#1a6644',
     accent:'#1a6644', accentSub:'rgba(26,102,68,0.28)',
-    text:'#111d17', textDim:'rgba(17,29,23,0.42)', textSub:'rgba(17,29,23,0.22)',
-    arabic:'#111d17', line:'rgba(26,102,68,0.12)',
-    chip:'rgba(26,102,68,0.06)', chipBrd:'rgba(26,102,68,0.16)',
+    text:'#111d17', textDim:'rgba(17,29,23,0.45)', textSub:'rgba(17,29,23,0.25)',
+    arabic:'#111d17', line:'rgba(26,102,68,0.14)',
+    chip:'rgba(26,102,68,0.06)', chipBrd:'rgba(26,102,68,0.18)',
     bar:'rgba(26,102,68,0.10)',
   },
   black: {
-    bg:'#000000', bgGlow:'#101010',
-    dot:'rgba(255,255,255,0.055)', dotFill:'rgba(255,255,255,0.46)', dotHead:'#ffffff',
+    bg:'#000000', bgGlow:'#111111',
     accent:'#ffffff', accentSub:'rgba(255,255,255,0.25)',
-    text:'#ffffff', textDim:'rgba(255,255,255,0.38)', textSub:'rgba(255,255,255,0.16)',
+    text:'#ffffff', textDim:'rgba(255,255,255,0.40)', textSub:'rgba(255,255,255,0.18)',
     arabic:'#ffffff', line:'rgba(255,255,255,0.10)',
-    chip:'rgba(255,255,255,0.05)', chipBrd:'rgba(255,255,255,0.12)',
+    chip:'rgba(255,255,255,0.06)', chipBrd:'rgba(255,255,255,0.14)',
     bar:'rgba(255,255,255,0.08)',
   },
 };
@@ -97,188 +93,223 @@ export default async function handler(req) {
   });
 }
 
+// ─────────────────────────────────────────────────────────
+// SVG BUILDER — simple top-to-bottom flow, no complex math
+// ─────────────────────────────────────────────────────────
 function buildWallpaper({ W, H, verse, dayOfYear, daysInYear, pct, hijri, C }) {
-  const cx = W / 2;
-  const s  = (n) => +(n * (W / 1179)).toFixed(2);
+  const cx  = W / 2;
+  // px() scales a "design unit" based on W=1080 baseline
+  const px  = (n) => Math.round(n * W / 1080);
 
-  // ── FIXED VERTICAL LAYOUT ────────────────────────────
-  const topLabelY  = H * 0.10;    // "HARI KE-xx · xx%"
-  const chipY      = H * 0.113;   // date chip rect
-  const chipTextY  = chipY + s(27);
-  const chipH2     = s(40);
-  const chipW2     = s(310);
+  // ── Font sizes ──
+  const FS = {
+    label:  px(22),   // "HARI KE-xx"
+    chip:   px(30),   // date in chip
+    tag:    px(22),   // "QS. SURAH : N"
+    arabic: px(76),   // arabic verse
+    latin:  px(32),   // transliteration
+    trans:  px(36),   // translation
+    suarAr: px(38),   // surah name arabic
+    footer: px(20),   // "QURAN DAILY"
+  };
 
-  const arabicFsz  = s(50);
-  const arabicLh   = arabicFsz * 1.75;
-  const latinFsz   = s(20);
-  const latinLh    = latinFsz * 1.6;
-  const transFsz   = s(23);
-  const transLh    = transFsz * 1.65;
-
-  // Wrap text first so we know line counts
-  const arabicWords = verse.arabic.split(' ');
+  // ── Wrap text ──
+  const arabicWords = (verse.arabic || '').split(' ');
   const arabicLines = chunkWords(arabicWords, 5);
-  const latinLines  = wrap(verse.latin, Math.floor(44 * W / 1179));
-  const transLines  = wrap(verse.translation, Math.floor(40 * W / 1179));
+  const latinLines  = wrap(verse.latin || '', px(38));
+  const transLines  = wrap(verse.translation || '', px(34));
 
-  // ── Calculate total content block height ──
-  const surahTagH  = s(13) * 1.4;
-  const arabicH    = arabicLines.length * arabicLh;
-  const sep1H      = s(20) + s(22);
-  const latinH     = latinLines.length * latinLh;
-  const sep2H      = s(16) + s(20);
-  const transH     = transLines.length * transLh;
-  const surahArH   = s(24) * 1.4;
-  const gapAbove   = s(28); // gap between surah tag and arabic
+  // ── Line heights ──
+  const LH = {
+    arabic: FS.arabic * 1.8,
+    latin:  FS.latin  * 1.65,
+    trans:  FS.trans  * 1.65,
+  };
 
-  const totalBlockH = surahTagH + gapAbove + arabicH + sep1H + latinH + sep2H + transH + s(32) + surahArH;
+  // ── Build content lines as array of {type, text?, y_offset} ──
+  // We'll stack them with a cursor
+  // First calculate total height of the "verse block"
+  const GAP_TAG_ARABIC = px(40);
+  const GAP_SEP        = px(32);
+  const GAP_SURAH_AR   = px(48);
 
-  // ── Vertical zones ──
-  const headerZoneH = H * 0.20;   // top 20%: day label + chip
-  const footerZoneH = H * 0.10;   // bottom 10%: progress + footer
-  const contentZoneTop = headerZoneH;
-  const contentZoneH   = H - headerZoneH - footerZoneH;
+  const blockH =
+    FS.tag +
+    GAP_TAG_ARABIC +
+    arabicLines.length * LH.arabic +
+    GAP_SEP +
+    latinLines.length  * LH.latin  +
+    GAP_SEP +
+    transLines.length  * LH.trans  +
+    GAP_SURAH_AR +
+    FS.suarAr;
 
-  // Center content block in content zone
-  const contentStartY = contentZoneTop + (contentZoneH - totalBlockH) / 2;
+  // ── Fixed zones ──
+  // Header: top 18% — day label + chip
+  // Footer: bottom 9% — progress bar + footer text
+  // Middle: remaining — verse block vertically centered
 
-  const surahTagY  = contentStartY + surahTagH;
+  const HEADER_H = H * 0.18;
+  const FOOTER_H = H * 0.09;
+  const MIDDLE_H = H - HEADER_H - FOOTER_H;
 
-  // Arabic block starts here
-  const arabicStartY = surahTagY + gapAbove;
+  // Clamp: if block too tall for middle, start earlier
+  const blockTop = HEADER_H + Math.max(0, (MIDDLE_H - blockH) / 2);
 
-  // Build arabic SVG, tracking Y
-  let y = arabicStartY;
+  // ── Header positions ──
+  const dayLabelY  = H * 0.085;
+  const chipRectY  = H * 0.105;
+  const chipH      = px(60);
+  const chipW      = px(480);
+  const chipTextY  = chipRectY + chipH * 0.64; // vertically centered in chip
+
+  // ── Content cursor ──
+  let y = blockTop;
+
+  // Surah tag
+  const surahTagY = y + FS.tag;
+  y = surahTagY + GAP_TAG_ARABIC;
+
+  // Arabic
   const arabicSvg = arabicLines.map(line => {
-    const el = `<text x="${cx}" y="${y.toFixed(1)}" text-anchor="middle"
+    y += LH.arabic;
+    return `<text x="${cx}" y="${y}"
+      text-anchor="middle"
       font-family="'Scheherazade New','Amiri',Georgia,serif"
-      font-size="${arabicFsz}" fill="${C.arabic}" direction="rtl">${esc(line)}</text>`;
-    y += arabicLh;
-    return el;
+      font-size="${FS.arabic}"
+      fill="${C.arabic}"
+      direction="rtl">${esc(line)}</text>`;
   }).join('\n');
+  // y is now after last arabic line
 
-  y += s(20);
+  // Sep 1
+  y += GAP_SEP;
   const sep1Y = y;
-  y += s(22);
 
+  // Latin
   const latinSvg = latinLines.map(line => {
-    const el = `<text x="${cx}" y="${y.toFixed(1)}" text-anchor="middle"
+    y += LH.latin;
+    return `<text x="${cx}" y="${y}"
+      text-anchor="middle"
       font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-      font-size="${latinFsz}" font-style="italic" fill="${C.textDim}">${esc(line)}</text>`;
-    y += latinLh;
-    return el;
+      font-size="${FS.latin}"
+      font-style="italic"
+      fill="${C.textDim}">${esc(line)}</text>`;
   }).join('\n');
 
-  y += s(16);
+  // Sep 2
+  y += GAP_SEP;
   const sep2Y = y;
-  y += s(20);
 
+  // Translation
   const transSvg = transLines.map(line => {
-    const el = `<text x="${cx}" y="${y.toFixed(1)}" text-anchor="middle"
+    y += LH.trans;
+    return `<text x="${cx}" y="${y}"
+      text-anchor="middle"
       font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-      font-size="${transFsz}" fill="${C.text}">${esc(line)}</text>`;
-    y += transLh;
-    return el;
+      font-size="${FS.trans}"
+      fill="${C.text}">${esc(line)}</text>`;
   }).join('\n');
 
-  // After translation, place surah arabic name
-  const surahArY = y + s(32);
+  // Surah arabic name
+  y += GAP_SURAH_AR;
+  const surahArY = y;
 
-  // Progress bar — fixed near bottom
-  const barY  = H * 0.924;
-  const barW  = W * 0.70;
-  const barX  = cx - barW / 2;
-  const barH2 = s(2.5);
-  const fillW = barW * pct / 100;
+  // ── Progress bar ──
+  const barPad  = W * 0.14;
+  const barY    = H - FOOTER_H * 0.55;
+  const barW    = W - barPad * 2;
+  const barH2   = px(3);
+  const fillW   = Math.max(barH2, barW * pct / 100);
+  const footerY = H - FOOTER_H * 0.15;
 
-  // Footer
-  const footerY = H * 0.962;
+  // ── Horizontal pad for separators ──
+  const sepPad = W * 0.42;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
-  <radialGradient id="topGlow" cx="50%" cy="10%" r="60%" gradientUnits="userSpaceOnUse"
-    x1="0" y1="0" x2="${W}" y2="${H * 0.5}">
-    <stop offset="0%"   stop-color="${C.bgGlow}" stop-opacity="1"/>
+  <radialGradient id="g1" cx="50%" cy="0%" r="70%">
+    <stop offset="0%"   stop-color="${C.bgGlow}" stop-opacity="0.8"/>
     <stop offset="100%" stop-color="${C.bg}"     stop-opacity="0"/>
   </radialGradient>
-  <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%"   stop-color="${C.bg}" stop-opacity="1"/>
-    <stop offset="12%"  stop-color="${C.bg}" stop-opacity="0"/>
-    <stop offset="72%"  stop-color="${C.bg}" stop-opacity="0"/>
-    <stop offset="100%" stop-color="${C.bg}" stop-opacity="1"/>
-  </linearGradient>
   <linearGradient id="barG" x1="0" y1="0" x2="1" y2="0">
     <stop offset="0%"   stop-color="${C.accentSub}"/>
     <stop offset="100%" stop-color="${C.accent}"/>
   </linearGradient>
 </defs>
 
-<!-- BG -->
+<!-- Background -->
 <rect width="${W}" height="${H}" fill="${C.bg}"/>
-<rect width="${W}" height="${H * 0.6}" fill="url(#topGlow)" opacity="0.4"/>
+<rect width="${W}" height="${H}" fill="url(#g1)"/>
 
-<!-- Day label -->
-<text x="${cx}" y="${topLabelY.toFixed(1)}" text-anchor="middle"
+<!-- ── HEADER ── -->
+<text x="${cx}" y="${dayLabelY}"
+  text-anchor="middle"
   font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-  font-size="${s(12)}" letter-spacing="${s(3)}" fill="${C.textSub}">HARI KE-${dayOfYear} DARI ${daysInYear}  ·  ${pct}%</text>
+  font-size="${FS.label}" letter-spacing="${px(4)}"
+  fill="${C.textSub}">HARI KE-${dayOfYear} DARI ${daysInYear}  ·  ${pct}%</text>
 
-<!-- Date chip -->
-<rect x="${(cx - chipW2/2).toFixed(1)}" y="${chipY.toFixed(1)}"
-  width="${chipW2}" height="${chipH2}" rx="${s(20)}"
-  fill="${C.chip}" stroke="${C.chipBrd}" stroke-width="0.8"/>
-<text x="${cx}" y="${chipTextY.toFixed(1)}" text-anchor="middle"
+<rect x="${cx - chipW/2}" y="${chipRectY}"
+  width="${chipW}" height="${chipH}" rx="${chipH/2}"
+  fill="${C.chip}" stroke="${C.chipBrd}" stroke-width="1"/>
+<text x="${cx}" y="${chipTextY}"
+  text-anchor="middle"
   font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-  font-size="${s(18)}" fill="${C.textDim}">${esc(hijri)}</text>
+  font-size="${FS.chip}" fill="${C.textDim}">${esc(hijri)}</text>
 
-<!-- Surah tag -->
-<text x="${cx}" y="${surahTagY.toFixed(1)}" text-anchor="middle"
+<!-- ── SURAH TAG ── -->
+<text x="${cx}" y="${surahTagY}"
+  text-anchor="middle"
   font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-  font-size="${s(13)}" font-weight="600" letter-spacing="${s(2.5)}"
+  font-size="${FS.tag}" font-weight="600" letter-spacing="${px(3)}"
   fill="${C.accent}">QS. ${esc(verse.surahName.toUpperCase())} : ${verse.ayahN}</text>
 
-<!-- ARABIC -->
+<!-- ── ARABIC ── -->
 ${arabicSvg}
 
 <!-- Sep 1 -->
-<line x1="${(cx-s(40)).toFixed(1)}" y1="${sep1Y.toFixed(1)}"
-      x2="${(cx+s(40)).toFixed(1)}" y2="${sep1Y.toFixed(1)}"
-  stroke="${C.line}" stroke-width="0.8"/>
+<line x1="${sepPad}" y1="${sep1Y}" x2="${W - sepPad}" y2="${sep1Y}"
+  stroke="${C.line}" stroke-width="1"/>
 
-<!-- LATIN -->
+<!-- ── LATIN ── -->
 ${latinSvg}
 
 <!-- Sep 2 -->
-<line x1="${(cx-s(40)).toFixed(1)}" y1="${sep2Y.toFixed(1)}"
-      x2="${(cx+s(40)).toFixed(1)}" y2="${sep2Y.toFixed(1)}"
-  stroke="${C.line}" stroke-width="0.8"/>
+<line x1="${sepPad}" y1="${sep2Y}" x2="${W - sepPad}" y2="${sep2Y}"
+  stroke="${C.line}" stroke-width="1"/>
 
-<!-- TRANSLATION -->
+<!-- ── TRANSLATION ── -->
 ${transSvg}
 
-<!-- Surah arabic -->
-<text x="${cx}" y="${surahArY.toFixed(1)}" text-anchor="middle"
+<!-- ── SURAH ARABIC ── -->
+<text x="${cx}" y="${surahArY}"
+  text-anchor="middle"
   font-family="'Scheherazade New','Amiri',serif"
-  font-size="${s(24)}" fill="${C.accentSub}">${esc(verse.surahArabic)}</text>
+  font-size="${FS.suarAr}" fill="${C.accentSub}">${esc(verse.surahArabic)}</text>
 
-<!-- Progress bar -->
-<rect x="${barX.toFixed(1)}" y="${barY.toFixed(1)}"
-  width="${barW.toFixed(1)}" height="${barH2}" rx="${(barH2/2).toFixed(1)}"
+<!-- ── PROGRESS BAR ── -->
+<rect x="${barPad}" y="${barY}"
+  width="${barW}" height="${barH2}" rx="${barH2/2}"
   fill="${C.bar}"/>
-<rect x="${barX.toFixed(1)}" y="${barY.toFixed(1)}"
-  width="${fillW.toFixed(1)}" height="${barH2}" rx="${(barH2/2).toFixed(1)}"
+<rect x="${barPad}" y="${barY}"
+  width="${fillW}" height="${barH2}" rx="${barH2/2}"
   fill="url(#barG)"/>
-<circle cx="${(barX+fillW).toFixed(1)}" cy="${(barY+barH2/2).toFixed(1)}"
-  r="${s(5)}" fill="${C.accent}"/>
+<circle cx="${barPad + fillW}" cy="${barY + barH2/2}"
+  r="${px(8)}" fill="${C.accent}"/>
 
-<!-- Footer -->
-<text x="${cx}" y="${footerY.toFixed(1)}" text-anchor="middle"
+<!-- ── FOOTER ── -->
+<text x="${cx}" y="${footerY}"
+  text-anchor="middle"
   font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-  font-size="${s(12)}" letter-spacing="${s(3)}" fill="${C.textSub}">QURAN DAILY</text>
+  font-size="${FS.footer}" letter-spacing="${px(4)}"
+  fill="${C.textSub}">QURAN DAILY</text>
 
 </svg>`;
 }
 
+// ── Helpers ──────────────────────────────────────────────
 function chunkWords(words, n) {
   const out = [];
   for (let i = 0; i < words.length; i += n)
@@ -286,14 +317,14 @@ function chunkWords(words, n) {
   return out;
 }
 
-function wrap(text, max) {
+function wrap(text, maxChars) {
   if (!text) return [''];
   const words = text.split(' ');
   const lines = [];
   let cur = '';
   for (const w of words) {
     const next = cur ? cur + ' ' + w : w;
-    if (next.length > max) { if (cur) lines.push(cur); cur = w; }
+    if (next.length > maxChars) { if (cur) lines.push(cur); cur = w; }
     else cur = next;
   }
   if (cur) lines.push(cur);
