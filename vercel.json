@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/api/wallpaper", "destination": "/api/wallpaper.js" }
   ],
