@@ -101,57 +101,63 @@ function buildWallpaper({ W, H, verse, dayOfYear, daysInYear, pct, hijri, C }) {
   // px() scales a "design unit" based on W=1080 baseline
   const px  = (n) => Math.round(n * W / 1080);
 
-  // ── Font sizes ──
-  const FS = {
-    label:  px(22),   // "HARI KE-xx"
-    chip:   px(30),   // date in chip
-    tag:    px(22),   // "QS. SURAH : N"
-    arabic: px(76),   // arabic verse
-    latin:  px(32),   // transliteration
-    trans:  px(36),   // translation
-    suarAr: px(38),   // surah name arabic
-    footer: px(20),   // "QURAN DAILY"
-  };
-
-  // ── Wrap text ──
-  const arabicWords = (verse.arabic || '').split(' ');
-  const arabicLines = chunkWords(arabicWords, 5);
-  const latinLines  = wrap(verse.latin || '', px(38));
-  const transLines  = wrap(verse.translation || '', px(34));
-
-  // ── Line heights ──
-  const LH = {
-    arabic: FS.arabic * 1.8,
-    latin:  FS.latin  * 1.65,
-    trans:  FS.trans  * 1.65,
-  };
-
-  // ── Build content lines as array of {type, text?, y_offset} ──
-  // We'll stack them with a cursor
-  // First calculate total height of the "verse block"
-  const GAP_TAG_ARABIC = px(40);
-  const GAP_SEP        = px(32);
-  const GAP_SURAH_AR   = px(48);
-
-  const blockH =
-    FS.tag +
-    GAP_TAG_ARABIC +
-    arabicLines.length * LH.arabic +
-    GAP_SEP +
-    latinLines.length  * LH.latin  +
-    GAP_SEP +
-    transLines.length  * LH.trans  +
-    GAP_SURAH_AR +
-    FS.suarAr;
-
   // ── Fixed zones ──
-  // Header: top 18% — day label + chip
-  // Footer: bottom 9% — progress bar + footer text
-  // Middle: remaining — verse block vertically centered
-
   const HEADER_H = H * 0.18;
   const FOOTER_H = H * 0.09;
   const MIDDLE_H = H - HEADER_H - FOOTER_H;
+
+  // ── Wrap text first (needed to count lines for scaling) ──
+  const arabicWords = (verse.arabic || '').split(' ');
+
+  // Auto-scale: start at max font size, shrink until content fits
+  // Try scale factors from 1.0 down to 0.45
+  let scale = 1.0;
+  let arabicLines, latinLines, transLines, FS, LH, GAP_TAG_ARABIC, GAP_SEP, GAP_SURAH_AR, blockH;
+
+  for (let attempt = 0; attempt < 12; attempt++) {
+    scale = 1.0 - attempt * 0.05;
+
+    FS = {
+      label:  px(22),
+      chip:   px(30),
+      tag:    px(22),
+      arabic: Math.round(px(76) * scale),
+      latin:  Math.round(px(32) * scale),
+      trans:  Math.round(px(36) * scale),
+      suarAr: Math.round(px(38) * scale),
+      footer: px(20),
+    };
+
+    LH = {
+      arabic: FS.arabic * 1.8,
+      latin:  FS.latin  * 1.65,
+      trans:  FS.trans  * 1.65,
+    };
+
+    GAP_TAG_ARABIC = Math.round(px(40) * scale);
+    GAP_SEP        = Math.round(px(32) * scale);
+    GAP_SURAH_AR   = Math.round(px(48) * scale);
+
+    // Wrap with current font scale — fewer chars per line when font is bigger
+    const arabicCharsPerLine = Math.floor(5 + (1 - scale) * 3); // 5–8 words
+    arabicLines = chunkWords(arabicWords, arabicCharsPerLine);
+    latinLines  = wrap(verse.latin || '', Math.floor(px(38) / (FS.latin * 0.55)));
+    transLines  = wrap(verse.translation || '', Math.floor(px(36) / (FS.trans * 0.52)));
+
+    blockH =
+      FS.tag +
+      GAP_TAG_ARABIC +
+      arabicLines.length * LH.arabic +
+      GAP_SEP +
+      latinLines.length  * LH.latin  +
+      GAP_SEP +
+      transLines.length  * LH.trans  +
+      GAP_SURAH_AR +
+      FS.suarAr;
+
+    // If it fits in the middle zone, stop shrinking
+    if (blockH <= MIDDLE_H * 0.92) break;
+  }
 
   // Clamp: if block too tall for middle, start earlier
   const blockTop = HEADER_H + Math.max(0, (MIDDLE_H - blockH) / 2);
