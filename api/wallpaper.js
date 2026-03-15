@@ -140,9 +140,9 @@ function buildWallpaper({ W, H, verse, dayOfYear, daysInYear, pct, hijri, C }) {
 
     // Wrap with current font scale — fewer chars per line when font is bigger
     const arabicCharsPerLine = Math.floor(5 + (1 - scale) * 3); // 5–8 words
-    arabicLines = chunkWords(arabicWords, arabicCharsPerLine);
-    latinLines  = wrap(verse.latin || '', Math.floor(px(38) / (FS.latin * 0.55)));
-    transLines  = wrap(verse.translation || '', Math.floor(px(36) / (FS.trans * 0.52)));
+    arabicLines = chunkWords(arabicWords, 5);
+    latinLines  = wrap(verse.latin || '', 38);
+    transLines  = wrap(verse.translation || '', 34);
 
     blockH =
       FS.tag +
