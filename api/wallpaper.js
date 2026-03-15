@@ -101,46 +101,17 @@ function buildWallpaper({ W, H, verse, dayOfYear, daysInYear, pct, hijri, C }) {
   const cx = W / 2;
   const s  = (n) => +(n * (W / 1179)).toFixed(2);
 
-  // ── DOT GRID: top 38% of screen ──────────────────────
-  const COLS = 18, ROWS = 24;
-  const PAD  = s(88);
-  const gridW  = W - PAD * 2;
-  const gridTop = H * 0.048;
-  const gridH   = H * 0.38;
-  const cellW  = gridW / COLS;
-  const cellH  = gridH / ROWS;
-  const dotR   = Math.min(cellW, cellH) * 0.15;
-
-  const total  = COLS * ROWS;
-  const filled = Math.round(total * pct / 100);
-
-  let dotsSvg = '';
-  let idx = 0;
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      idx++;
-      const x = PAD + cellW * c + cellW / 2;
-      const y = gridTop + cellH * r + cellH / 2;
-      const isHead = idx === filled;
-      const isFill = idx < filled;
-      const fill   = isHead ? C.dotHead : isFill ? C.dotFill : C.dot;
-      const r2     = isHead ? dotR * 1.8 : dotR;
-      dotsSvg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r2.toFixed(1)}" fill="${fill}"/>`;
-    }
-  }
-
   // ── FIXED VERTICAL LAYOUT ────────────────────────────
-  // All positions as % of H — carefully spaced
-  const topLabelY  = H * 0.455;   // "HARI KE-xx · xx%"
-  const chipY      = H * 0.468;   // date chip rect
+  const topLabelY  = H * 0.10;    // "HARI KE-xx · xx%"
+  const chipY      = H * 0.113;   // date chip rect
   const chipTextY  = chipY + s(27);
   const chipH2     = s(40);
   const chipW2     = s(310);
 
-  const surahTagY  = H * 0.545;   // "QS. SURAH : ayah"
+  const surahTagY  = H * 0.22;    // "QS. SURAH : ayah"
 
   // Arabic block starts here
-  const arabicStartY = H * 0.575;
+  const arabicStartY = H * 0.255;
   const arabicFsz    = s(50);
   const arabicLh     = arabicFsz * 1.75;
 
@@ -224,13 +195,7 @@ function buildWallpaper({ W, H, verse, dayOfYear, daysInYear, pct, hijri, C }) {
 
 <!-- BG -->
 <rect width="${W}" height="${H}" fill="${C.bg}"/>
-<rect width="${W}" height="${H * 0.5}" fill="url(#topGlow)" opacity="0.5"/>
-
-<!-- DOTS -->
-${dotsSvg}
-
-<!-- FADE -->
-<rect width="${W}" height="${H}" fill="url(#fade)"/>
+<rect width="${W}" height="${H * 0.6}" fill="url(#topGlow)" opacity="0.4"/>
 
 <!-- Day label -->
 <text x="${cx}" y="${topLabelY.toFixed(1)}" text-anchor="middle"
