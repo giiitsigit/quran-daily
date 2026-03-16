@@ -1,344 +1,123 @@
-// api/wallpaper.js — v4 CLEAN LAYOUT
-import {
-  getDailyVerseSurahAyah, getYearProgress,
-  formatHijri, fetchVerseData, FALLBACK_VERSES
-} from '../lib/quran.js';
-
-export const config = { runtime: 'edge' };
-
-const DEVICES = {
-  'iphone-pro':  { w: 1179, h: 2556 },
-  'iphone':      { w: 1170, h: 2532 },
-  'iphone-se':   { w: 750,  h: 1334 },
-  'iphone-plus': { w: 1290, h: 2796 },
-  'android-fhd': { w: 1080, h: 2400 },
-  'pixel':       { w: 1080, h: 2340 },
-  'universal':   { w: 1080, h: 1920 },
-};
-
-const PALETTES = {
-  dark: {
-    bg:'#0b1814', bgGlow:'#142820',
-    accent:'#6bc49e', accentSub:'rgba(107,196,158,0.28)',
-    text:'#edf5f1', textDim:'rgba(237,245,241,0.42)', textSub:'rgba(237,245,241,0.20)',
-    arabic:'#edf5f1', line:'rgba(107,196,158,0.15)',
-    chip:'rgba(107,196,158,0.08)', chipBrd:'rgba(107,196,158,0.22)',
-    bar:'rgba(107,196,158,0.12)',
-  },
-  warm: {
-    bg:'#f6f1e9', bgGlow:'#e8e0d2',
-    accent:'#1a6644', accentSub:'rgba(26,102,68,0.28)',
-    text:'#111d17', textDim:'rgba(17,29,23,0.45)', textSub:'rgba(17,29,23,0.25)',
-    arabic:'#111d17', line:'rgba(26,102,68,0.14)',
-    chip:'rgba(26,102,68,0.06)', chipBrd:'rgba(26,102,68,0.18)',
-    bar:'rgba(26,102,68,0.10)',
-  },
-  black: {
-    bg:'#000000', bgGlow:'#111111',
-    accent:'#ffffff', accentSub:'rgba(255,255,255,0.25)',
-    text:'#ffffff', textDim:'rgba(255,255,255,0.40)', textSub:'rgba(255,255,255,0.18)',
-    arabic:'#ffffff', line:'rgba(255,255,255,0.10)',
-    chip:'rgba(255,255,255,0.06)', chipBrd:'rgba(255,255,255,0.14)',
-    bar:'rgba(255,255,255,0.08)',
-  },
-};
-
-export default async function handler(req) {
-  const url = new URL(req.url);
-  const p   = url.searchParams;
-
-  const deviceKey = p.get('device') || 'iphone-pro';
-  const device    = DEVICES[deviceKey] || DEVICES['iphone-pro'];
-  let W = parseInt(p.get('w')) || device.w;
-  let H = parseInt(p.get('h')) || device.h;
-  W = Math.min(Math.max(W, 720), 1440);
-  H = Math.min(Math.max(H, 1280), 3200);
-
-  const mode    = p.get('mode')    || 'random';
-  const surahN  = p.get('surah')   || null;
-  const tema    = p.get('tema')    || null;
-  const palette = p.get('palette') || 'dark';
-  const tz      = p.get('tz')      || 'Asia/Jakarta';
-
-  let today;
-  try { today = new Date(new Date().toLocaleString('en-US', { timeZone: tz })); }
-  catch { today = new Date(); }
-
-  const yy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const todayStr = `${yy}-${mm}-${dd}`;
-
-  const ref = getDailyVerseSurahAyah(
-    todayStr,
-    mode === 'surah' ? surahN : null,
-    mode === 'tema'  ? tema   : null
-  );
-
-  let verse;
-  try { verse = await fetchVerseData(ref.s, ref.a); }
-  catch { verse = FALLBACK_VERSES[0]; }
-
-  const { dayOfYear, daysInYear, pct } = getYearProgress(todayStr);
-  const hijri = formatHijri(today);
-  const C     = PALETTES[palette] || PALETTES.dark;
-
-  const svg = buildWallpaper({ W, H, verse, dayOfYear, daysInYear, pct, hijri, C });
-
-  return new Response(svg, {
-    headers: {
-      'Content-Type':  'image/svg+xml',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-    },
-  });
-}
-
-// ─────────────────────────────────────────────────────────
-// SVG BUILDER — simple top-to-bottom flow, no complex math
-// ─────────────────────────────────────────────────────────
-function buildWallpaper({ W, H, verse, dayOfYear, daysInYear, pct, hijri, C }) {
-  const cx  = W / 2;
-  // px() scales a "design unit" based on W=1080 baseline
-  const px  = (n) => Math.round(n * W / 1080);
-
-  // ── Fixed zones ──
-  const HEADER_H = H * 0.18;
-  const FOOTER_H = H * 0.09;
-  const MIDDLE_H = H - HEADER_H - FOOTER_H;
-
-  // ── Wrap text first (needed to count lines for scaling) ──
-  const arabicWords = (verse.arabic || '').split(' ');
-
-  // Auto-scale: start at max font size, shrink until content fits
-  // Try scale factors from 1.0 down to 0.45
-  let scale = 1.0;
-  let arabicLines, latinLines, transLines, FS, LH, GAP_TAG_ARABIC, GAP_SEP, GAP_SURAH_AR, blockH;
-
-  for (let attempt = 0; attempt < 12; attempt++) {
-    scale = 1.0 - attempt * 0.05;
-
-    FS = {
-      label:  px(22),
-      chip:   px(30),
-      tag:    px(22),
-      arabic: Math.round(px(76) * scale),
-      latin:  Math.round(px(32) * scale),
-      trans:  Math.round(px(36) * scale),
-      suarAr: Math.round(px(38) * scale),
-      footer: px(20),
-    };
-
-    LH = {
-      arabic: FS.arabic * 1.8,
-      latin:  FS.latin  * 1.65,
-      trans:  FS.trans  * 1.65,
-    };
-
-    GAP_TAG_ARABIC = Math.round(px(40) * scale);
-    GAP_SEP        = Math.round(px(32) * scale);
-    GAP_SURAH_AR   = Math.round(px(48) * scale);
-
-    // Wrap with current font scale — fewer chars per line when font is bigger
-    const arabicCharsPerLine = Math.floor(5 + (1 - scale) * 3); // 5–8 words
-    arabicLines = chunkWords(arabicWords, 5);
-    latinLines  = wrap(verse.latin || '', 38);
-    transLines  = wrap(verse.translation || '', 34);
-
-    blockH =
-      FS.tag +
-      GAP_TAG_ARABIC +
-      arabicLines.length * LH.arabic +
-      GAP_SEP +
-      latinLines.length  * LH.latin  +
-      GAP_SEP +
-      transLines.length  * LH.trans  +
-      GAP_SURAH_AR +
-      FS.suarAr;
-
-    // If it fits in the middle zone, stop shrinking
-    if (blockH <= MIDDLE_H * 0.92) break;
-  }
-
-  // Clamp: if block too tall for middle, start earlier
-  const blockTop = HEADER_H + Math.max(0, (MIDDLE_H - blockH) / 2);
-
-  // ── Header positions ──
-  const dayLabelY  = H * 0.085;
-  const chipRectY  = H * 0.105;
-  const chipH      = px(60);
-  const chipW      = px(480);
-  const chipTextY  = chipRectY + chipH * 0.64; // vertically centered in chip
-
-  // ── Content cursor ──
-  let y = blockTop;
-
-  // Surah tag
-  const surahTagY = y + FS.tag;
-  y = surahTagY + GAP_TAG_ARABIC;
-
-  // Arabic
-  const arabicSvg = arabicLines.map(line => {
-    y += LH.arabic;
-    return `<text x="${cx}" y="${y}"
-      text-anchor="middle"
-      font-family="'Scheherazade New','Amiri',Georgia,serif"
-      font-size="${FS.arabic}"
-      fill="${C.arabic}"
-      direction="rtl">${esc(line)}</text>`;
-  }).join('\n');
-  // y is now after last arabic line
-
-  // Sep 1
-  y += GAP_SEP;
-  const sep1Y = y;
-
-  // Latin
-  const latinSvg = latinLines.map(line => {
-    y += LH.latin;
-    return `<text x="${cx}" y="${y}"
-      text-anchor="middle"
-      font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-      font-size="${FS.latin}"
-      font-style="italic"
-      fill="${C.textDim}">${esc(line)}</text>`;
-  }).join('\n');
-
-  // Sep 2
-  y += GAP_SEP;
-  const sep2Y = y;
-
-  // Translation
-  const transSvg = transLines.map(line => {
-    y += LH.trans;
-    return `<text x="${cx}" y="${y}"
-      text-anchor="middle"
-      font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-      font-size="${FS.trans}"
-      fill="${C.text}">${esc(line)}</text>`;
-  }).join('\n');
-
-  // Surah arabic name
-  y += GAP_SURAH_AR;
-  const surahArY = y;
-
-  // ── Progress bar ──
-  const barPad  = W * 0.14;
-  const barY    = H - FOOTER_H * 0.55;
-  const barW    = W - barPad * 2;
-  const barH2   = px(3);
-  const fillW   = Math.max(barH2, barW * pct / 100);
-  const footerY = H - FOOTER_H * 0.15;
-
-  // ── Horizontal pad for separators ──
-  const sepPad = W * 0.42;
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg"
-     width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-<defs>
-  <radialGradient id="g1" cx="50%" cy="0%" r="70%">
-    <stop offset="0%"   stop-color="${C.bgGlow}" stop-opacity="0.8"/>
-    <stop offset="100%" stop-color="${C.bg}"     stop-opacity="0"/>
-  </radialGradient>
-  <linearGradient id="barG" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0%"   stop-color="${C.accentSub}"/>
-    <stop offset="100%" stop-color="${C.accent}"/>
-  </linearGradient>
-</defs>
-
-<!-- Background -->
-<rect width="${W}" height="${H}" fill="${C.bg}"/>
-<rect width="${W}" height="${H}" fill="url(#g1)"/>
-
-<!-- ── HEADER ── -->
-<text x="${cx}" y="${dayLabelY}"
-  text-anchor="middle"
-  font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-  font-size="${FS.label}" letter-spacing="${px(4)}"
-  fill="${C.textSub}">HARI KE-${dayOfYear} DARI ${daysInYear}  ·  ${pct}%</text>
-
-<rect x="${cx - chipW/2}" y="${chipRectY}"
-  width="${chipW}" height="${chipH}" rx="${chipH/2}"
-  fill="${C.chip}" stroke="${C.chipBrd}" stroke-width="1"/>
-<text x="${cx}" y="${chipTextY}"
-  text-anchor="middle"
-  font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-  font-size="${FS.chip}" fill="${C.textDim}">${esc(hijri)}</text>
-
-<!-- ── SURAH TAG ── -->
-<text x="${cx}" y="${surahTagY}"
-  text-anchor="middle"
-  font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-  font-size="${FS.tag}" font-weight="600" letter-spacing="${px(3)}"
-  fill="${C.accent}">QS. ${esc(verse.surahName.toUpperCase())} : ${verse.ayahN}</text>
-
-<!-- ── ARABIC ── -->
-${arabicSvg}
-
-<!-- Sep 1 -->
-<line x1="${sepPad}" y1="${sep1Y}" x2="${W - sepPad}" y2="${sep1Y}"
-  stroke="${C.line}" stroke-width="1"/>
-
-<!-- ── LATIN ── -->
-${latinSvg}
-
-<!-- Sep 2 -->
-<line x1="${sepPad}" y1="${sep2Y}" x2="${W - sepPad}" y2="${sep2Y}"
-  stroke="${C.line}" stroke-width="1"/>
-
-<!-- ── TRANSLATION ── -->
-${transSvg}
-
-<!-- ── SURAH ARABIC ── -->
-<text x="${cx}" y="${surahArY}"
-  text-anchor="middle"
-  font-family="'Scheherazade New','Amiri',serif"
-  font-size="${FS.suarAr}" fill="${C.accentSub}">${esc(verse.surahArabic)}</text>
-
-<!-- ── PROGRESS BAR ── -->
-<rect x="${barPad}" y="${barY}"
-  width="${barW}" height="${barH2}" rx="${barH2/2}"
-  fill="${C.bar}"/>
-<rect x="${barPad}" y="${barY}"
-  width="${fillW}" height="${barH2}" rx="${barH2/2}"
-  fill="url(#barG)"/>
-<circle cx="${barPad + fillW}" cy="${barY + barH2/2}"
-  r="${px(8)}" fill="${C.accent}"/>
-
-<!-- ── FOOTER ── -->
-<text x="${cx}" y="${footerY}"
-  text-anchor="middle"
-  font-family="'DM Sans','Helvetica Neue',Arial,sans-serif"
-  font-size="${FS.footer}" letter-spacing="${px(4)}"
-  fill="${C.textSub}">QURAN DAILY</text>
-
-</svg>`;
-}
-
-// ── Helpers ──────────────────────────────────────────────
-function chunkWords(words, n) {
-  const out = [];
-  for (let i = 0; i < words.length; i += n)
-    out.push(words.slice(i, i + n).join(' '));
-  return out;
-}
-
-function wrap(text, maxChars) {
-  if (!text) return [''];
-  const words = text.split(' ');
-  const lines = [];
-  let cur = '';
-  for (const w of words) {
-    const next = cur ? cur + ' ' + w : w;
-    if (next.length > maxChars) { if (cur) lines.push(cur); cur = w; }
-    else cur = next;
-  }
-  if (cur) lines.push(cur);
-  return lines.length ? lines : [''];
-}
-
-function esc(s) {
-  return String(s || '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+diff --git a/api/wallpaper.js b/api/wallpaper.js
+index 46fd919b69f1c587357455f0549b20ff33a12f63..fd76c637bed64845ce7a51aa1effbd6e4f521c5a 100644
+--- a/api/wallpaper.js
++++ b/api/wallpaper.js
+@@ -1,43 +1,54 @@
+ // api/wallpaper.js — v4 CLEAN LAYOUT
++import { readFile } from 'node:fs/promises';
++import { Resvg, initWasm } from '@resvg/resvg-wasm';
+ import {
+   getDailyVerseSurahAyah, getYearProgress,
+   formatHijri, fetchVerseData, FALLBACK_VERSES
+ } from '../lib/quran.js';
+ 
+-export const config = { runtime: 'edge' };
++export const config = { runtime: 'nodejs' };
+ 
+ const DEVICES = {
+   'iphone-pro':  { w: 1179, h: 2556 },
+   'iphone':      { w: 1170, h: 2532 },
+   'iphone-se':   { w: 750,  h: 1334 },
+   'iphone-plus': { w: 1290, h: 2796 },
+   'android-fhd': { w: 1080, h: 2400 },
+   'pixel':       { w: 1080, h: 2340 },
+   'universal':   { w: 1080, h: 1920 },
+ };
+ 
++let wasmReady;
++async function ensureResvgWasm() {
++  if (!wasmReady) {
++    wasmReady = readFile(new URL('../node_modules/@resvg/resvg-wasm/index_bg.wasm', import.meta.url))
++      .then((wasm) => initWasm(wasm));
++  }
++  return wasmReady;
++}
++
+ const PALETTES = {
+   dark: {
+     bg:'#0b1814', bgGlow:'#142820',
+     accent:'#6bc49e', accentSub:'rgba(107,196,158,0.28)',
+     text:'#edf5f1', textDim:'rgba(237,245,241,0.42)', textSub:'rgba(237,245,241,0.20)',
+     arabic:'#edf5f1', line:'rgba(107,196,158,0.15)',
+     chip:'rgba(107,196,158,0.08)', chipBrd:'rgba(107,196,158,0.22)',
+     bar:'rgba(107,196,158,0.12)',
+   },
+   warm: {
+     bg:'#f6f1e9', bgGlow:'#e8e0d2',
+     accent:'#1a6644', accentSub:'rgba(26,102,68,0.28)',
+     text:'#111d17', textDim:'rgba(17,29,23,0.45)', textSub:'rgba(17,29,23,0.25)',
+     arabic:'#111d17', line:'rgba(26,102,68,0.14)',
+     chip:'rgba(26,102,68,0.06)', chipBrd:'rgba(26,102,68,0.18)',
+     bar:'rgba(26,102,68,0.10)',
+   },
+   black: {
+     bg:'#000000', bgGlow:'#111111',
+     accent:'#ffffff', accentSub:'rgba(255,255,255,0.25)',
+     text:'#ffffff', textDim:'rgba(255,255,255,0.40)', textSub:'rgba(255,255,255,0.18)',
+     arabic:'#ffffff', line:'rgba(255,255,255,0.10)',
+     chip:'rgba(255,255,255,0.06)', chipBrd:'rgba(255,255,255,0.14)',
+     bar:'rgba(255,255,255,0.08)',
+   },
+@@ -62,55 +73,59 @@ export default async function handler(req) {
+ 
+   let today;
+   try { today = new Date(new Date().toLocaleString('en-US', { timeZone: tz })); }
+   catch { today = new Date(); }
+ 
+   const yy = today.getFullYear();
+   const mm = String(today.getMonth() + 1).padStart(2, '0');
+   const dd = String(today.getDate()).padStart(2, '0');
+   const todayStr = `${yy}-${mm}-${dd}`;
+ 
+   const ref = getDailyVerseSurahAyah(
+     todayStr,
+     mode === 'surah' ? surahN : null,
+     mode === 'tema'  ? tema   : null
+   );
+ 
+   let verse;
+   try { verse = await fetchVerseData(ref.s, ref.a); }
+   catch { verse = FALLBACK_VERSES[0]; }
+ 
+   const { dayOfYear, daysInYear, pct } = getYearProgress(todayStr);
+   const hijri = formatHijri(today);
+   const C     = PALETTES[palette] || PALETTES.dark;
+ 
+   const svg = buildWallpaper({ W, H, verse, dayOfYear, daysInYear, pct, hijri, C });
++  await ensureResvgWasm();
++  const resvg = new Resvg(svg);
++  const png = resvg.render().asPng();
+ 
+-  return new Response(svg, {
++  return new Response(png, {
+     headers: {
+-      'Content-Type':  'image/svg+xml',
+-      'Cache-Control': 'no-cache, no-store, must-revalidate',
++      'Content-Type': 'image/png',
++      'Content-Length': String(png.byteLength),
++      'Cache-Control': 'public, max-age=0, s-maxage=86400, stale-while-revalidate=3600',
+     },
+   });
+ }
+ 
+ // ─────────────────────────────────────────────────────────
+ // SVG BUILDER — simple top-to-bottom flow, no complex math
+ // ─────────────────────────────────────────────────────────
+ function buildWallpaper({ W, H, verse, dayOfYear, daysInYear, pct, hijri, C }) {
+   const cx  = W / 2;
+   // px() scales a "design unit" based on W=1080 baseline
+   const px  = (n) => Math.round(n * W / 1080);
+ 
+   // ── Fixed zones ──
+   const HEADER_H = H * 0.18;
+   const FOOTER_H = H * 0.09;
+   const MIDDLE_H = H - HEADER_H - FOOTER_H;
+ 
+   // ── Wrap text first (needed to count lines for scaling) ──
+   const arabicWords = (verse.arabic || '').split(' ');
+ 
+   // Auto-scale: start at max font size, shrink until content fits
+   // Try scale factors from 1.0 down to 0.45
+   let scale = 1.0;
+   let arabicLines, latinLines, transLines, FS, LH, GAP_TAG_ARABIC, GAP_SEP, GAP_SURAH_AR, blockH;
+ 
