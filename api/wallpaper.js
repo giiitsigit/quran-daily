@@ -1,3 +1,4 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/api/wallpaper.js b/api/wallpaper.js
 index 46fd919b69f1c587357455f0549b20ff33a12f63..fd76c637bed64845ce7a51aa1effbd6e4f521c5a 100644
 --- a/api/wallpaper.js
@@ -121,3 +122,6 @@ index 46fd919b69f1c587357455f0549b20ff33a12f63..fd76c637bed64845ce7a51aa1effbd6e
    let scale = 1.0;
    let arabicLines, latinLines, transLines, FS, LH, GAP_TAG_ARABIC, GAP_SEP, GAP_SURAH_AR, blockH;
  
+ 
+EOF
+)
