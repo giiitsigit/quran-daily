@@ -1,11 +1,12 @@
  (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/api/wallpaper.js b/api/wallpaper.js
-index 46fd919b69f1c587357455f0549b20ff33a12f63..fd76c637bed64845ce7a51aa1effbd6e4f521c5a 100644
+index 46fd919b69f1c587357455f0549b20ff33a12f63..57e3243a5dd12431da80c8aaa7546bb8d1203ae5 100644
 --- a/api/wallpaper.js
 +++ b/api/wallpaper.js
-@@ -1,43 +1,54 @@
+@@ -1,43 +1,57 @@
  // api/wallpaper.js — v4 CLEAN LAYOUT
 +import { readFile } from 'node:fs/promises';
++import { createRequire } from 'node:module';
 +import { Resvg, initWasm } from '@resvg/resvg-wasm';
  import {
    getDailyVerseSurahAyah, getYearProgress,
@@ -25,11 +26,13 @@ index 46fd919b69f1c587357455f0549b20ff33a12f63..fd76c637bed64845ce7a51aa1effbd6e
    'universal':   { w: 1080, h: 1920 },
  };
  
++const require = createRequire(import.meta.url);
++const RESVG_WASM_PATH = require.resolve('@resvg/resvg-wasm/index_bg.wasm');
++
 +let wasmReady;
 +async function ensureResvgWasm() {
 +  if (!wasmReady) {
-+    wasmReady = readFile(new URL('../node_modules/@resvg/resvg-wasm/index_bg.wasm', import.meta.url))
-+      .then((wasm) => initWasm(wasm));
++    wasmReady = readFile(RESVG_WASM_PATH).then((wasm) => initWasm(wasm));
 +  }
 +  return wasmReady;
 +}
@@ -59,7 +62,7 @@ index 46fd919b69f1c587357455f0549b20ff33a12f63..fd76c637bed64845ce7a51aa1effbd6e
      chip:'rgba(255,255,255,0.06)', chipBrd:'rgba(255,255,255,0.14)',
      bar:'rgba(255,255,255,0.08)',
    },
-@@ -62,55 +73,59 @@ export default async function handler(req) {
+@@ -62,55 +76,59 @@ export default async function handler(req) {
  
    let today;
    try { today = new Date(new Date().toLocaleString('en-US', { timeZone: tz })); }
